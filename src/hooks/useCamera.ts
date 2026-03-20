@@ -1,69 +1,83 @@
 // ─────────────────────────────────────────────
-// useCamera — camera + location + save flow
-// Encapsulates the entire AddEntry business logic:
-//   1. Take photo
-//   2. Auto-reverse-geocode current location
-//   3. Save entry + trigger notification
+// useCamera — full AddEntry business logic
+// Flow: take photo → auto geocode → validate → save
+// react-native-uuid used for proper unique IDs
 // ─────────────────────────────────────────────
 
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
+import uuid from 'react-native-uuid';
 import { TravelEntry } from '../types';
-import { requestCameraPermission, launchCamera } from '../services/cameraService';
-import { requestLocationPermission, getCurrentCoordinates, reverseGeocode } from '../services/locationService';
+import {
+  requestCameraPermission,
+  launchCamera,
+} from '../services/cameraService';
+import {
+  requestLocationPermission,
+  getCurrentCoordinates,
+  reverseGeocode,
+} from '../services/locationService';
 import { sendEntrySavedNotification } from '../services/notificationService';
 
 interface UseCameraReturn {
-  imageUri: string | null;
-  address: string;
+  imageUri:           string | null;
+  address:            string;
   isFetchingLocation: boolean;
-  isSaving: boolean;
-  handleTakePhoto: () => Promise<void>;
-  handleSave: (onSave: (entry: TravelEntry) => Promise<boolean>) => Promise<boolean>;
-  resetForm: () => void;
+  isSaving:           boolean;
+  handleTakePhoto:    () => Promise<void>;
+  handleSave:         (onSave: (entry: TravelEntry) => Promise<boolean>) => Promise<boolean>;
+  resetForm:          () => void;
 }
 
 export const useCamera = (): UseCameraReturn => {
-  const [imageUri, setImageUri]                   = useState<string | null>(null);
-  const [address, setAddress]                     = useState('');
+  const [imageUri,           setImageUri]           = useState<string | null>(null);
+  const [address,            setAddress]            = useState('');
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
-  const [isSaving, setIsSaving]                   = useState(false);
+  const [isSaving,           setIsSaving]           = useState(false);
 
   /**
-   * Step 1 — Take photo.
-   * Step 2 — Automatically fetch & reverse-geocode location.
-   * Both permissions are checked before proceeding.
+   * Step 1 — Request camera permission and launch camera.
+   * Step 2 — On capture, auto-fetch and reverse-geocode location.
+   * Both steps guard against permission denial gracefully.
    */
   const handleTakePhoto = useCallback(async () => {
-    // Check camera permission first
     const cameraGranted = await requestCameraPermission();
     if (!cameraGranted) {
-      Alert.alert('Permission Denied', 'Camera access is required to take photos.');
+      Alert.alert(
+        'Camera Permission Denied',
+        'Please enable camera access in your device settings.',
+      );
       return;
     }
 
     const uri = await launchCamera();
-    if (!uri) return; // User cancelled — do nothing
+    if (!uri) return; // User cancelled — no action needed
 
     setImageUri(uri);
-    setAddress(''); // Clear any previous address
+    setAddress('');
 
-    // Auto-fetch location after photo is captured
+    // Immediately begin location fetch after photo is captured
     setIsFetchingLocation(true);
     try {
       const locationGranted = await requestLocationPermission();
       if (!locationGranted) {
-        Alert.alert('Permission Denied', 'Location access is required to get your address.');
-        setIsFetchingLocation(false);
+        Alert.alert(
+          'Location Permission Denied',
+          'Please enable location access in your device settings.',
+        );
+        setAddress('Address unavailable');
         return;
       }
 
-      const coords  = await getCurrentCoordinates();
+      const coords   = await getCurrentCoordinates();
       const resolved = await reverseGeocode(coords);
       setAddress(resolved);
     } catch (err) {
-      console.error('[useCamera] Location error:', err);
-      Alert.alert('Location Error', 'Could not retrieve your address. You can still save without it.');
+      console.error('[useCamera] Location fetch error:', err);
+      Alert.alert(
+        'Location Error',
+        'Could not retrieve your address. Entry can still be saved.',
+      );
       setAddress('Address unavailable');
     } finally {
       setIsFetchingLocation(false);
@@ -71,9 +85,8 @@ export const useCamera = (): UseCameraReturn => {
   }, []);
 
   /**
-   * Validate state, build TravelEntry, persist via onSave callback,
-   * then fire a local notification on success.
-   * Returns true if the save succeeded.
+   * Validate → build entry → persist → notify on success.
+   * Accepts onSave as a callback to stay decoupled from storage.
    */
   const handleSave = useCallback(
     async (onSave: (entry: TravelEntry) => Promise<boolean>): Promise<boolean> => {
@@ -81,17 +94,17 @@ export const useCamera = (): UseCameraReturn => {
         Alert.alert('No Photo', 'Please take a photo before saving.');
         return false;
       }
-      if (!address) {
-        Alert.alert('No Address', 'Location is still being fetched. Please wait.');
+      if (isFetchingLocation) {
+        Alert.alert('Please Wait', 'Still fetching your location.');
         return false;
       }
 
       setIsSaving(true);
       try {
         const entry: TravelEntry = {
-          id:        Date.now().toString(), // Simple unique ID
+          id:        uuid.v4() as string, // Proper UUID via react-native-uuid
           imageUri,
-          address,
+          address:   address || 'Address unavailable',
           createdAt: new Date().toISOString(),
         };
 
@@ -105,13 +118,13 @@ export const useCamera = (): UseCameraReturn => {
         setIsSaving(false);
       }
     },
-    [imageUri, address],
+    [imageUri, address, isFetchingLocation],
   );
 
   /**
-   * Reset all form state — called when user leaves without saving
-   * or after a successful save. Ensures AddEntry screen is clean
-   * every time the user navigates to it.
+   * Clear all form state.
+   * Called after successful save and on screen blur
+   * to ensure AddEntry is always clean on re-entry.
    */
   const resetForm = useCallback(() => {
     setImageUri(null);

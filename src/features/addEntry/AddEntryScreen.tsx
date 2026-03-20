@@ -4,8 +4,8 @@
 //   • Take photo via camera
 //   • Auto-fetch + display current address
 //   • Save entry to AsyncStorage + send notification
-//   • Reset form if user leaves without saving
-//     (useFocusEffect detects navigation away)
+//   • Reset form when user leaves without saving
+//     (useFocusEffect cleanup fires on screen blur)
 // ─────────────────────────────────────────────
 
 import React, { useLayoutEffect, useCallback } from 'react';
@@ -44,22 +44,21 @@ const AddEntryScreen: React.FC = () => {
 
   const { handleAddEntry } = useEntries();
 
-  // Style the header to match the active theme
+  // Apply theme colors to the navigation header
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerStyle:    { backgroundColor: theme.colors.card },
+      headerStyle:     { backgroundColor: theme.colors.card },
       headerTintColor: theme.colors.text,
     });
   }, [navigation, theme]);
 
   /**
-   * useFocusEffect fires every time this screen loses focus.
-   * If the user pressed Back without saving, reset the form
-   * so the screen is clean the next time they open it.
+   * useFocusEffect cleanup fires when the user leaves this screen.
+   * If they pressed Back without saving, the form resets so it's
+   * clean the next time they open AddEntry.
    */
   useFocusEffect(
     useCallback(() => {
-      // Return a cleanup function — runs on blur (leaving the screen)
       return () => {
         resetForm();
       };
@@ -80,13 +79,15 @@ const AddEntryScreen: React.FC = () => {
     }
   };
 
+  const isSaveDisabled = isSaving || !imageUri || isFetchingLocation;
+
   return (
     <ThemedView>
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Camera section ── */}
+        {/* ── Camera tap zone ── */}
         <TouchableOpacity
           style={[
             styles.cameraBox,
@@ -109,7 +110,7 @@ const AddEntryScreen: React.FC = () => {
           )}
         </TouchableOpacity>
 
-        {/* Retake option once an image is captured */}
+        {/* Retake option after a photo is captured */}
         {imageUri && (
           <TouchableOpacity onPress={handleTakePhoto} disabled={isSaving}>
             <Text style={[styles.retakeText, { color: theme.colors.primary }]}>
@@ -118,8 +119,13 @@ const AddEntryScreen: React.FC = () => {
           </TouchableOpacity>
         )}
 
-        {/* ── Location section ── */}
-        <View style={[styles.addressBox, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        {/* ── Address display ── */}
+        <View
+          style={[
+            styles.addressBox,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
           {isFetchingLocation ? (
             <View style={styles.row}>
               <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -144,14 +150,13 @@ const AddEntryScreen: React.FC = () => {
           style={[
             styles.saveBtn,
             {
-              backgroundColor:
-                isSaving || !imageUri || isFetchingLocation
-                  ? theme.colors.border      // Visually disabled
-                  : theme.colors.primary,
+              backgroundColor: isSaveDisabled
+                ? theme.colors.border   // Visually disabled state
+                : theme.colors.primary,
             },
           ]}
           onPress={onPressSave}
-          disabled={isSaving || !imageUri || isFetchingLocation}
+          disabled={isSaveDisabled}
           accessibilityLabel="Save travel entry"
           accessibilityRole="button"
         >
@@ -184,8 +189,8 @@ const styles = StyleSheet.create({
     overflow:       'hidden',
   },
   preview: {
-    width:  '100%',
-    height: '100%',
+    width:      '100%',
+    height:     '100%',
     resizeMode: 'cover',
   },
   cameraPlaceholder: {
@@ -195,13 +200,13 @@ const styles = StyleSheet.create({
     textAlign:  'center',
     fontSize:   14,
     fontWeight: '500',
-    marginTop:  -8, // Pull closer to the camera box
+    marginTop:  -8,
   },
   addressBox: {
-    borderRadius: 10,
-    borderWidth:  1,
-    padding:      14,
-    minHeight:    56,
+    borderRadius:   10,
+    borderWidth:    1,
+    padding:        14,
+    minHeight:      56,
     justifyContent: 'center',
   },
   addressText: {

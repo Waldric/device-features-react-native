@@ -1,8 +1,6 @@
 // ─────────────────────────────────────────────
 // locationService — expo-location abstraction
 // Based on professor's GeolocationScreen pattern
-// Handles permission requests, coordinate fetch,
-// and reverse geocoding in one clean API
 // ─────────────────────────────────────────────
 
 import * as Location from 'expo-location';
@@ -14,7 +12,7 @@ export interface Coordinates {
 
 /**
  * Request foreground location permission.
- * Returns true if granted, false otherwise.
+ * Returns true if granted.
  */
 export const requestLocationPermission = async (): Promise<boolean> => {
   const { status } = await Location.requestForegroundPermissionsAsync();
@@ -22,28 +20,26 @@ export const requestLocationPermission = async (): Promise<boolean> => {
 };
 
 /**
- * Fetch the device's current GPS coordinates.
- * Uses High accuracy for best results.
- * Throws if location services are unavailable.
+ * Get current GPS coordinates at high accuracy.
  */
 export const getCurrentCoordinates = async (): Promise<Coordinates> => {
-  const locationData = await Location.getCurrentPositionAsync({
+  const data = await Location.getCurrentPositionAsync({
     accuracy: Location.Accuracy.High,
   });
   return {
-    latitude: locationData.coords.latitude,
-    longitude: locationData.coords.longitude,
+    latitude:  data.coords.latitude,
+    longitude: data.coords.longitude,
   };
 };
 
 /**
- * Convert GPS coordinates to a human-readable address string.
- * Uses the same formatAddress pattern from professor's example.
+ * Convert coordinates to a readable address string.
+ * Mirrors professor's formatAddress pattern exactly.
  */
 export const reverseGeocode = async (coords: Coordinates): Promise<string> => {
   const results = await Location.reverseGeocodeAsync(coords);
   if (!results || results.length === 0) {
-    throw new Error('No address found for these coordinates.');
+    throw new Error('No address found for coordinates.');
   }
   return formatAddress(
     results[0].name       ?? '',
@@ -53,14 +49,10 @@ export const reverseGeocode = async (coords: Coordinates): Promise<string> => {
   );
 };
 
-/**
- * Format address parts into a single readable string.
- * Mirrors the professor's formatAddress function exactly.
- */
 function formatAddress(
-  name: string,
-  city: string,
-  region: string,
+  name:       string,
+  city:       string,
+  region:     string,
   postalCode: string,
 ): string {
   return `${name}, ${city}, ${region} ${postalCode}`.trim();

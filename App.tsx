@@ -1,7 +1,10 @@
 // ─────────────────────────────────────────────
-// App.tsx — entry point, kept intentionally minimal
-// Only responsibility: wrap with ThemeProvider
-// and register notifications on startup
+// App.tsx — entry point, intentionally minimal
+// Responsibilities:
+//   1. Wrap app with ThemeProvider
+//   2. Register notifications on startup
+//   3. Mount AppNavigator
+// All other logic lives in features/hooks/services
 // ─────────────────────────────────────────────
 
 import React, { useEffect } from 'react';

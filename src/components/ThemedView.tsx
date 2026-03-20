@@ -1,7 +1,6 @@
 // ─────────────────────────────────────────────
-// ThemedView — base screen wrapper
-// Automatically applies background color from
-// the active theme so screens don't repeat this
+// ThemedView — base screen container
+// Auto-applies background color from active theme
 // ─────────────────────────────────────────────
 
 import React from 'react';
@@ -17,11 +16,7 @@ const ThemedView: React.FC<ThemedViewProps> = ({ children, style, ...rest }) => 
 
   return (
     <View
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background },
-        style,
-      ]}
+      style={[styles.container, { backgroundColor: theme.colors.background }, style]}
       {...rest}
     >
       {children}
@@ -30,9 +25,7 @@ const ThemedView: React.FC<ThemedViewProps> = ({ children, style, ...rest }) => 
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
 });
 
 export default ThemedView;

@@ -2,13 +2,14 @@
 // HomeScreen — main travel diary list view
 // Features:
 //   • FlatList of all saved TravelEntry items
+//   • Reloads entries on screen focus (useFocusEffect)
 //   • Delete with confirmation dialog
 //   • Empty state when no entries exist
 //   • Dark/Light mode toggle in header
-//   • FAB-style Add button at the bottom
+//   • Add Entry button at the bottom
 // ─────────────────────────────────────────────
 
-import React, { useLayoutEffect } from 'react';
+import React, { useLayoutEffect, useCallback } from 'react';
 import {
   FlatList,
   TouchableOpacity,
@@ -22,20 +23,28 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { useEntries } from '../../hooks/useEntries';
 import { useTheme } from '../../hooks/useTheme';
+import { useThemeContext } from '../../context/ThemeContext';
 import EntryCard from '../../components/EntryCard';
 import EmptyState from '../../components/EmptyState';
 import ThemedView from '../../components/ThemedView';
-import { useThemeContext } from '../../context/ThemeContext';
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 const HomeScreen: React.FC = () => {
-  const navigation                              = useNavigation<HomeNavProp>();
-  const { entries, isLoading, handleRemoveEntry } = useEntries();
-  const { theme }                               = useTheme();
-  const { toggleTheme }                         = useThemeContext();
+  const navigation                                    = useNavigation<HomeNavProp>();
+  const { entries, isLoading, reload, handleRemoveEntry } = useEntries();
+  const { theme }                                     = useTheme();
+  const { toggleTheme }                               = useThemeContext();
 
-  // Inject the theme toggle button into the navigation header
+  // Reload entries every time HomeScreen comes into focus —
+  // this ensures newly saved entries from AddEntryScreen appear immediately
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
+
+  // Inject theme toggle button into the navigation header
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
@@ -43,7 +52,7 @@ const HomeScreen: React.FC = () => {
           <Text style={{ fontSize: 20 }}>{theme.dark ? '☀️' : '🌙'}</Text>
         </TouchableOpacity>
       ),
-      headerStyle: { backgroundColor: theme.colors.card },
+      headerStyle:     { backgroundColor: theme.colors.card },
       headerTintColor: theme.colors.text,
     });
   }, [navigation, theme, toggleTheme]);
@@ -70,7 +79,7 @@ const HomeScreen: React.FC = () => {
         }
       />
 
-      {/* Add Entry button — navigates to AddEntry screen */}
+      {/* Navigate to AddEntry screen */}
       <TouchableOpacity
         style={[styles.addBtn, { backgroundColor: theme.colors.primary }]}
         onPress={() => navigation.navigate('AddEntry')}
@@ -87,33 +96,33 @@ const HomeScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   center: {
-    flex: 1,
-    alignItems: 'center',
+    flex:           1,
+    alignItems:     'center',
     justifyContent: 'center',
   },
   listContent: {
     paddingVertical: 8,
-    paddingBottom: 80, // Room for the Add button
+    paddingBottom:   80,
   },
   emptyContainer: {
-    flex: 1, // Allows EmptyState to fill the screen and center vertically
+    flex: 1,
   },
   headerBtn: {
     marginRight: 8,
-    padding: 4,
+    padding:     4,
   },
   addBtn: {
-    position:      'absolute',
-    bottom:        24,
-    alignSelf:     'center',
+    position:          'absolute',
+    bottom:            24,
+    alignSelf:         'center',
     paddingVertical:   14,
     paddingHorizontal: 36,
-    borderRadius:  28,
-    elevation:     4,
-    shadowColor:   '#000',
-    shadowOffset:  { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius:  4,
+    borderRadius:      28,
+    elevation:         4,
+    shadowColor:       '#000',
+    shadowOffset:      { width: 0, height: 2 },
+    shadowOpacity:     0.2,
+    shadowRadius:      4,
   },
   addBtnText: {
     fontSize:   16,

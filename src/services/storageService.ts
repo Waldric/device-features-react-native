@@ -1,8 +1,7 @@
 // ─────────────────────────────────────────────
-// storageService — AsyncStorage abstraction
-// Based on professor's AsyncStorage pattern
-// All entry CRUD lives here — screens never
-// call AsyncStorage directly
+// storageService — AsyncStorage CRUD abstraction
+// Based directly on professor's AsyncStorage pattern
+// Screens never call AsyncStorage directly
 // ─────────────────────────────────────────────
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,8 +9,8 @@ import { TravelEntry } from '../types';
 import { STORAGE_KEY } from '../constants';
 
 /**
- * Load all saved travel entries from AsyncStorage.
- * Returns an empty array if nothing is stored yet.
+ * Load all saved entries.
+ * Returns empty array on failure so UI never crashes.
  */
 export const loadEntries = async (): Promise<TravelEntry[]> => {
   try {
@@ -19,51 +18,47 @@ export const loadEntries = async (): Promise<TravelEntry[]> => {
     if (raw === null) return [];
     return JSON.parse(raw) as TravelEntry[];
   } catch (error) {
-    // Storage read failure — return safe default so UI never crashes
-    console.error('[storageService] Failed to load entries:', error);
+    console.error('[storageService] loadEntries failed:', error);
     return [];
   }
 };
 
 /**
- * Persist an array of entries to AsyncStorage.
- * Overwrites the entire list (single source of truth).
+ * Overwrite the entire entries list in storage.
+ * Single source of truth — no partial updates.
  */
 export const saveEntries = async (entries: TravelEntry[]): Promise<boolean> => {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
     return true;
   } catch (error) {
-    console.error('[storageService] Failed to save entries:', error);
+    console.error('[storageService] saveEntries failed:', error);
     return false;
   }
 };
 
 /**
- * Add a single new entry to the existing list.
- * Prepends so newest entries appear at the top.
+ * Prepend a new entry so newest appears first in the list.
  */
 export const addEntry = async (entry: TravelEntry): Promise<boolean> => {
   try {
     const existing = await loadEntries();
-    const updated = [entry, ...existing];
-    return await saveEntries(updated);
+    return await saveEntries([entry, ...existing]);
   } catch (error) {
-    console.error('[storageService] Failed to add entry:', error);
+    console.error('[storageService] addEntry failed:', error);
     return false;
   }
 };
 
 /**
- * Remove a single entry by its unique ID.
+ * Remove a single entry by its UUID.
  */
 export const removeEntry = async (id: string): Promise<boolean> => {
   try {
     const existing = await loadEntries();
-    const filtered = existing.filter(e => e.id !== id);
-    return await saveEntries(filtered);
+    return await saveEntries(existing.filter(e => e.id !== id));
   } catch (error) {
-    console.error('[storageService] Failed to remove entry:', error);
+    console.error('[storageService] removeEntry failed:', error);
     return false;
   }
 };

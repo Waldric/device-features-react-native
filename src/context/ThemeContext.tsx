@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────
-// ThemeContext — provides dark/light mode state
-// Consumed via useTheme() hook across all screens
+// ThemeContext — global dark/light mode state
+// Wrap app root with ThemeProvider once in App.tsx
 // ─────────────────────────────────────────────
 
 import React, {
@@ -17,7 +17,6 @@ interface ThemeContextValue {
   toggleTheme: () => void;
 }
 
-// Default to light theme on first render
 const ThemeContext = createContext<ThemeContextValue>({
   theme: { dark: false, colors: LIGHT_COLORS },
   toggleTheme: () => {},
@@ -27,11 +26,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [isDark, setIsDark] = useState(false);
 
   const theme: AppTheme = {
-    dark: isDark,
+    dark:   isDark,
     colors: isDark ? DARK_COLORS : LIGHT_COLORS,
   };
 
-  // Toggle between dark and light mode
   const toggleTheme = () => setIsDark(prev => !prev);
 
   return (
@@ -41,5 +39,4 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Convenience export — avoids importing useContext everywhere
 export const useThemeContext = () => useContext(ThemeContext);

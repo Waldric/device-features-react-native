@@ -4,19 +4,19 @@
 // ─────────────────────────────────────────────
 
 export interface TravelEntry {
-  id: string;           // Unique identifier (timestamp-based UUID)
-  imageUri: string;     // Local file URI from camera
-  address: string;      // Reverse-geocoded human-readable address
-  createdAt: string;    // ISO date string for display/sorting
+  id: string;        // UUID via react-native-uuid
+  imageUri: string;  // Local file URI from camera
+  address: string;   // Reverse-geocoded address string
+  createdAt: string; // ISO date string
 }
 
-// Navigation param list — keeps navigation strictly typed
+// Strict navigation param list for type-safe routing
 export type RootStackParamList = {
   Home: undefined;
   AddEntry: undefined;
 };
 
-// Theme shape used by ThemeContext and all themed components
+// Theme shape consumed by ThemeContext and all themed components
 export interface AppTheme {
   dark: boolean;
   colors: {

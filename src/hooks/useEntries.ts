@@ -1,10 +1,10 @@
 // ─────────────────────────────────────────────
-// useEntries — manages the travel entries list
-// Loads from AsyncStorage on mount, exposes
-// add and remove actions with loading/error states
+// useEntries — travel entries state management
+// Exposes reload() so HomeScreen can refresh
+// on focus after AddEntry saves a new entry
 // ─────────────────────────────────────────────
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { TravelEntry } from '../types';
 import {
   loadEntries,
@@ -13,46 +13,50 @@ import {
 } from '../services/storageService';
 
 interface UseEntriesReturn {
-  entries: TravelEntry[];
-  isLoading: boolean;
-  error: string | null;
-  handleAddEntry: (entry: TravelEntry) => Promise<boolean>;
+  entries:           TravelEntry[];
+  isLoading:         boolean;
+  error:             string | null;
+  reload:            () => Promise<void>;
+  handleAddEntry:    (entry: TravelEntry) => Promise<boolean>;
   handleRemoveEntry: (id: string) => Promise<void>;
 }
 
 export const useEntries = (): UseEntriesReturn => {
-  const [entries, setEntries]   = useState<TravelEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError]       = useState<string | null>(null);
-
-  // Load persisted entries on first mount — mirrors professor's useEffect/loadName pattern
-  useEffect(() => {
-    const fetchEntries = async () => {
-      setIsLoading(true);
-      const stored = await loadEntries();
-      setEntries(stored);
-      setIsLoading(false);
-    };
-    fetchEntries();
-  }, []);
+  const [entries,   setEntries]   = useState<TravelEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
 
   /**
-   * Add a new entry to storage and update local state.
-   * Returns false if storage write fails so the caller can show an error.
+   * Load entries from AsyncStorage into local state.
+   * Called on screen focus rather than once on mount
+   * so HomeScreen always reflects latest saved data.
    */
-  const handleAddEntry = useCallback(async (entry: TravelEntry): Promise<boolean> => {
-    const success = await addEntry(entry);
-    if (success) {
-      // Prepend to keep newest-first order in the list
-      setEntries(prev => [entry, ...prev]);
-    } else {
-      setError('Failed to save entry. Please try again.');
-    }
-    return success;
+  const reload = useCallback(async () => {
+    setIsLoading(true);
+    const stored = await loadEntries();
+    setEntries(stored);
+    setIsLoading(false);
   }, []);
 
   /**
-   * Remove an entry by ID from storage and local state.
+   * Save a new entry and prepend it to local state.
+   * Returns false so the caller can surface an error.
+   */
+  const handleAddEntry = useCallback(
+    async (entry: TravelEntry): Promise<boolean> => {
+      const success = await addEntry(entry);
+      if (success) {
+        setEntries(prev => [entry, ...prev]);
+      } else {
+        setError('Failed to save entry. Please try again.');
+      }
+      return success;
+    },
+    [],
+  );
+
+  /**
+   * Delete entry by ID from storage and local state.
    */
   const handleRemoveEntry = useCallback(async (id: string): Promise<void> => {
     const success = await removeEntry(id);
@@ -63,5 +67,12 @@ export const useEntries = (): UseEntriesReturn => {
     }
   }, []);
 
-  return { entries, isLoading, error, handleAddEntry, handleRemoveEntry };
+  return {
+    entries,
+    isLoading,
+    error,
+    reload,
+    handleAddEntry,
+    handleRemoveEntry,
+  };
 };
