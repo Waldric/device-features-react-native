@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Alert } from "react-native";
 import uuid from "react-native-uuid";
 import { TravelEntry } from "../types";
@@ -30,6 +30,7 @@ export const useCamera = (): UseCameraReturn => {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [cameraBlocked, setCameraBlocked] = useState(false);
+  const isSaveInProgress = useRef(false);
 
   /**
    * Launch camera and handle all three outcomes:
@@ -71,7 +72,7 @@ export const useCamera = (): UseCameraReturn => {
     }
   }, []);
 
-//Re-fetch address without retaking photo
+  //Re-fetch address without retaking photo
   const refetchAddress = useCallback(async () => {
     if (!imageUri) return;
     setIsFetchingLocation(true);
@@ -138,7 +139,15 @@ export const useCamera = (): UseCameraReturn => {
     async (
       onSave: (entry: TravelEntry) => Promise<boolean>,
     ): Promise<boolean> => {
+      // Guard — prevents duplicate entries from rapid double-taps
+      if (isSaveInProgress.current) {
+        console.warn("[useCamera] Duplicate save tap ignored.");
+        return false;
+      }
+
+      isSaveInProgress.current = true;
       setIsSaving(true);
+
       try {
         const entry: TravelEntry = {
           id: uuid.v4() as string,
@@ -153,6 +162,7 @@ export const useCamera = (): UseCameraReturn => {
         }
         return success;
       } finally {
+        isSaveInProgress.current = false;
         setIsSaving(false);
       }
     },
@@ -163,6 +173,7 @@ export const useCamera = (): UseCameraReturn => {
     setImageUri(null);
     setAddress("");
     setCameraBlocked(false);
+    isSaveInProgress.current = false; 
   }, []);
 
   return {

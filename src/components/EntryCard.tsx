@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -28,7 +28,6 @@ function parseAddress(address: string): {
   const parts = address.split(",").map((p) => p.trim());
 
   if (parts.length >= 3) {
-
     // Split region and postal code apart
     const regionParts = parts[2].split(" ");
     const postalCode = regionParts[regionParts.length - 1];
@@ -59,7 +58,7 @@ const EntryCard: React.FC<EntryCardProps> = ({ entry, onRemove }) => {
   const { theme } = useTheme();
   const { showToast } = useThemeContext();
   const fadeAnim = useRef(new Animated.Value(1)).current;
-
+  const [imageError, setImageError] = useState(false);
   const { cityRegion, streetDetail } = parseAddress(entry.address);
 
   const confirmRemove = () => {
@@ -97,14 +96,40 @@ const EntryCard: React.FC<EntryCardProps> = ({ entry, onRemove }) => {
       ]}
     >
       <View style={styles.card}>
-
         {/* Full-bleed image  */}
-        <Image
-          source={{ uri: entry.imageUri }}
-          style={styles.image}
-          resizeMode="cover"
-        />
-        
+        {imageError ? (
+          <View
+            style={[
+              styles.imageFallback,
+              { backgroundColor: theme.dark ? "#2a2a2e" : "#f0f0f0" },
+            ]}
+          >
+            <Ionicons
+              name="image-outline"
+              size={36}
+              color={theme.colors.subText}
+            />
+            <Text
+              style={[
+                styles.imageFallbackText,
+                { color: theme.colors.subText },
+              ]}
+            >
+              Image unavailable
+            </Text>
+          </View>
+        ) : (
+          <Image
+            source={{ uri: entry.imageUri }}
+            style={styles.image}
+            resizeMode="cover"
+            onError={() => {
+              console.warn("[EntryCard] Image failed to load:", entry.imageUri);
+              setImageError(true);
+            }}
+          />
+        )}
+
         <LinearGradient
           colors={
             theme.dark
@@ -167,11 +192,22 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     overflow: "hidden",
     width: width - 32,
-    backgroundColor: "#1a1a1a", 
+    backgroundColor: "#1a1a1a",
   },
   image: {
     width: "100%",
     height: 240,
+  },
+  imageFallback: {
+    width: "100%",
+    height: 240,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  imageFallbackText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
   },
 
   gradient: {
@@ -229,7 +265,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    overflow: "hidden", 
+    overflow: "hidden",
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
