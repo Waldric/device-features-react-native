@@ -1,8 +1,3 @@
-// ─────────────────────────────────────────────
-// ThemedView — base screen container
-// Auto-applies background color from active theme
-// ─────────────────────────────────────────────
-
 import React from 'react';
 import { View, ViewProps, StyleSheet } from 'react-native';
 import { useTheme } from '../hooks/useTheme';

@@ -55,7 +55,8 @@
           "color": "#ffffff",
           "sounds": []
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

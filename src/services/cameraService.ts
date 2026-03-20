@@ -1,8 +1,3 @@
-// ─────────────────────────────────────────────
-// cameraService — expo-image-picker abstraction
-// Based on professor's CameraScreen pattern
-// ─────────────────────────────────────────────
-
 import * as ImagePicker from 'expo-image-picker';
 
 /**
@@ -16,7 +11,6 @@ export const requestCameraPermission = async (): Promise<boolean> => {
 /**
  * Launch camera and return the captured image URI.
  * Returns null if the user cancels.
- * Mirrors professor's launchCameraAsync pattern.
  */
 export const launchCamera = async (): Promise<string | null> => {
   const result = await ImagePicker.launchCameraAsync({

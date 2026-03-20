@@ -1,9 +1,3 @@
-// ─────────────────────────────────────────────
-// useEntries — travel entries state management
-// Exposes reload() so HomeScreen can refresh
-// on focus after AddEntry saves a new entry
-// ─────────────────────────────────────────────
-
 import { useState, useCallback } from 'react';
 import { TravelEntry } from '../types';
 import {

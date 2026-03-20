@@ -1,8 +1,3 @@
-// ─────────────────────────────────────────────
-// locationService — expo-location abstraction
-// Based on professor's GeolocationScreen pattern
-// ─────────────────────────────────────────────
-
 import * as Location from 'expo-location';
 
 export interface Coordinates {
@@ -34,7 +29,6 @@ export const getCurrentCoordinates = async (): Promise<Coordinates> => {
 
 /**
  * Convert coordinates to a readable address string.
- * Mirrors professor's formatAddress pattern exactly.
  */
 export const reverseGeocode = async (coords: Coordinates): Promise<string> => {
   const results = await Location.reverseGeocodeAsync(coords);

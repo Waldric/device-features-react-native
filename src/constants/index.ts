@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────
-// App-wide constants — single source of truth
-// ─────────────────────────────────────────────
-
 export const STORAGE_KEY = '@travel_diary_entries';
 
 export const LIGHT_COLORS = {
@@ -21,7 +17,7 @@ export const DARK_COLORS = {
   text:       '#F0F0F0',
   subText:    '#AAAAAA',
   border:     '#333333',
-  primary:    '#82B1FF',
+  primary:    '#659ffc',
   danger:     '#EF5350',
   buttonText: '#121212',
 };

@@ -1,13 +1,8 @@
-// ─────────────────────────────────────────────
-// Global TypeScript interfaces and types
-// Used across all features, services, and hooks
-// ─────────────────────────────────────────────
-
 export interface TravelEntry {
-  id: string;        // UUID via react-native-uuid
-  imageUri: string;  // Local file URI from camera
-  address: string;   // Reverse-geocoded address string
-  createdAt: string; // ISO date string
+  id: string;       
+  imageUri: string;
+  address: string;   
+  createdAt: string; 
 }
 
 // Strict navigation param list for type-safe routing

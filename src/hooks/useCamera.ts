@@ -1,9 +1,3 @@
-// ─────────────────────────────────────────────
-// useCamera — full AddEntry business logic
-// Flow: take photo → auto geocode → validate → save
-// react-native-uuid used for proper unique IDs
-// ─────────────────────────────────────────────
-
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import uuid from 'react-native-uuid';
@@ -51,7 +45,7 @@ export const useCamera = (): UseCameraReturn => {
     }
 
     const uri = await launchCamera();
-    if (!uri) return; // User cancelled — no action needed
+    if (!uri) return; 
 
     setImageUri(uri);
     setAddress('');
@@ -85,7 +79,6 @@ export const useCamera = (): UseCameraReturn => {
   }, []);
 
   /**
-   * Validate → build entry → persist → notify on success.
    * Accepts onSave as a callback to stay decoupled from storage.
    */
   const handleSave = useCallback(

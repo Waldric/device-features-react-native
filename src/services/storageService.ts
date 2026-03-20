@@ -1,9 +1,3 @@
-// ─────────────────────────────────────────────
-// storageService — AsyncStorage CRUD abstraction
-// Based directly on professor's AsyncStorage pattern
-// Screens never call AsyncStorage directly
-// ─────────────────────────────────────────────
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TravelEntry } from '../types';
 import { STORAGE_KEY } from '../constants';
