@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useCallback } from "react";
+import React, { useLayoutEffect } from "react";
 import {
   View,
   Text,
@@ -7,19 +7,19 @@ import {
   ActivityIndicator,
   StyleSheet,
   ScrollView,
-  Alert,
   Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../types";
-import { useCamera } from "../../hooks/useCamera";
-import { useEntries } from "../../hooks/useEntries";
 import { useTheme } from "../../hooks/useTheme";
+import { useAddEntry } from "./useAddEntry";
+import PermissionRationale from "../../components/PermissionRationale";
+import CameraBanner from "../../components/CameraBanner";
 
-type AddEntryNavProp = NativeStackNavigationProp<
+type AddEntryNavProp = NativeStackNavigationProp <
   RootStackParamList,
   "AddEntry"
 >;
@@ -28,80 +28,41 @@ const { width } = Dimensions.get("window");
 
 const AddEntryScreen: React.FC = () => {
   const navigation = useNavigation<AddEntryNavProp>();
-  const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { theme }  = useTheme();
+  const insets     = useSafeAreaInsets();
 
   const {
     imageUri,
     address,
     isFetchingLocation,
     isSaving,
+    cameraBlocked,
     handleTakePhoto,
-    handleSave,
-    resetForm,
-  } = useCamera();
+    showLocationRationale,
+    showNotifRationale,
+    handleGrantLocation,
+    handleGrantNotification,
+    onPressSave,
+    isSaveDisabled,
+  } = useAddEntry();
 
-  const { handleAddEntry } = useEntries();
-
-  // hide the title since we render our own large title below
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerShown: true,
-      title: "", // Hide native title
-      headerStyle: { backgroundColor: theme.colors.background },
-      headerShadowVisible: false, // Remove bottom border line
-      headerTintColor: theme.colors.text,
+      headerShown:         true,
+      title:               "",
+      headerStyle:         { backgroundColor: theme.colors.background },
+      headerShadowVisible: false,
+      headerTintColor:     theme.colors.text,
     });
   }, [navigation, theme]);
 
-  // Reset form when user navigates away without saving
-  useFocusEffect(
-    useCallback(() => {
-      return () => resetForm();
-    }, [resetForm]),
-  );
-
-  const onPressSave = () => {
-    if (!imageUri) {
-      Alert.alert("No Photo", "Please take a photo before saving.");
-      return;
-    }
-    if (isFetchingLocation) {
-      Alert.alert(
-        "Please Wait",
-        "Still fetching your location. Try again in a moment.",
-      );
-      return;
-    }
-
-    Alert.alert(
-      "Save this entry?",
-      "Photo and location will be saved to your travel diary. Tap Cancel to retake.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Save",
-          style: "default",
-          onPress: async () => {
-            const success = await handleSave(handleAddEntry);
-            if (success) navigation.goBack();
-          },
-        },
-      ],
-    );
-  };
-
-  const isSaveDisabled = !imageUri || isFetchingLocation || isSaving;
-
-  // Glassy card surface
   const glassCard = {
     backgroundColor: theme.dark
       ? "rgba(40, 40, 45, 0.85)"
       : "rgba(255, 255, 255, 0.85)",
-    borderColor: theme.dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+    borderColor: theme.dark
+      ? "rgba(255,255,255,0.08)"
+      : "rgba(0,0,0,0.06)",
   };
 
   return (
@@ -114,19 +75,19 @@ const AddEntryScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/*Large title*/}
+        {/* Title */}
         <Text style={[styles.screenTitle, { color: theme.colors.text }]}>
           New Travel Entry
         </Text>
 
-        {/*Photo card */}
+        {/* Photo card */}
         <Pressable
           style={[
             styles.photoCard,
             glassCard,
             {
               shadowColor: theme.dark ? "#000" : "#94a3b8",
-              opacity: isFetchingLocation ? 0.6 : 1,
+              opacity:     isFetchingLocation ? 0.6 : 1,
             },
           ]}
           onPress={handleTakePhoto}
@@ -147,26 +108,24 @@ const AddEntryScreen: React.FC = () => {
                 size={44}
                 color={theme.colors.subText}
               />
-              <Text
-                style={[
-                  styles.placeholderText,
-                  { color: theme.colors.subText },
-                ]}
-              >
+              <Text style={[styles.placeholderText, { color: theme.colors.subText }]}>
                 Tap to take a photo
               </Text>
             </View>
           )}
         </Pressable>
 
-        {/*Retake link*/}
+        {/* Camera denied banner */}
+        {cameraBlocked && <CameraBanner />}
+
+        {/* Retake link */}
         {imageUri && (
           <Pressable
             onPress={handleTakePhoto}
             disabled={isSaving || isFetchingLocation}
             style={[
               styles.retakeBtn,
-              { opacity: isFetchingLocation ? 0.4 : 1 }, 
+              { opacity: isFetchingLocation ? 0.4 : 1 },
             ]}
             accessibilityLabel="Retake photo"
             accessibilityRole="button"
@@ -177,7 +136,7 @@ const AddEntryScreen: React.FC = () => {
           </Pressable>
         )}
 
-        {/*Address card */}
+        {/* Address card */}
         <View style={[styles.addressCard, glassCard]}>
           {isFetchingLocation ? (
             <View style={styles.addressRow}>
@@ -186,9 +145,7 @@ const AddEntryScreen: React.FC = () => {
                 color={theme.colors.primary}
                 style={{ marginRight: 10 }}
               />
-              <Text
-                style={[styles.addressText, { color: theme.colors.subText }]}
-              >
+              <Text style={[styles.addressText, { color: theme.colors.subText }]}>
                 Fetching your location…
               </Text>
             </View>
@@ -212,13 +169,43 @@ const AddEntryScreen: React.FC = () => {
           )}
         </View>
 
-        {/*Save Entry button*/}
+        {/* Location permission rationale */}
+        {showLocationRationale && (
+          <PermissionRationale
+            icon="location"
+            title="Location Access Required"
+            description={
+              "Your address is automatically retrieved using your location. " +
+              "Please grant location permission to tag this entry."
+            }
+            buttonLabel="Grant Access to Location"
+            onPress={handleGrantLocation}
+          />
+        )}
+
+        {/* Notification permission rationale */}
+        {showNotifRationale && (
+          <PermissionRationale
+            icon="notifications"
+            title="Enable Notifications"
+            description={
+              "Travel Diary sends a confirmation when your entry is saved. " +
+              "Please enable notifications for the best experience."
+            }
+            buttonLabel="Enable Notifications"
+            onPress={handleGrantNotification}
+          />
+        )}
+
+        {/* Save button */}
         <Pressable
           style={[
             styles.saveBtn,
             {
               backgroundColor: isSaveDisabled
-                ? theme.colors.border
+                ? theme.dark
+                  ? "rgba(255,255,255,0.08)"
+                  : "rgba(0,0,0,0.08)"
                 : theme.colors.primary,
             },
           ]}
@@ -233,7 +220,13 @@ const AddEntryScreen: React.FC = () => {
             <Text
               style={[
                 styles.saveBtnText,
-                { color: isSaveDisabled ? theme.colors.subText : "#FFFFFF" },
+                {
+                  color: isSaveDisabled
+                    ? theme.dark
+                      ? "rgba(255,255,255,0.25)"
+                      : "rgba(0,0,0,0.25)"
+                    : "#FFFFFF",
+                },
               ]}
             >
               Save Entry
@@ -246,94 +239,83 @@ const AddEntryScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
+  screen: { flex: 1 },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 8, 
-    gap: 16,
+    paddingTop:        8,
+    gap:               16,
   },
-
   screenTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 30,
+    fontFamily:    "Inter_700Bold",
+    fontSize:      30,
     letterSpacing: -0.5,
-    marginBottom: 4,
+    marginBottom:  4,
   },
-
-  // ── Photo card ──
   photoCard: {
-    width: width - 40,
-    height: 230,
-    borderRadius: 18,
-    borderWidth: 1,
-    overflow: "hidden",
-    shadowOffset: { width: 0, height: 6 },
+    width:         width - 40,
+    height:        230,
+    borderRadius:  18,
+    borderWidth:   1,
+    overflow:      "hidden",
+    shadowOffset:  { width: 0, height: 6 },
     shadowOpacity: 0.12,
-    shadowRadius: 18,
-    elevation: 6,
+    shadowRadius:  18,
+    elevation:     6,
   },
   photoPlaceholder: {
-    flex: 1,
-    alignItems: "center",
+    flex:           1,
+    alignItems:     "center",
     justifyContent: "center",
-    gap: 12,
+    gap:            12,
   },
   placeholderText: {
     fontFamily: "Inter_400Regular",
-    fontSize: 15,
+    fontSize:   15,
   },
   previewImage: {
-    width: "100%",
+    width:  "100%",
     height: "100%",
   },
-
-  // Retake link
   retakeBtn: {
-    alignSelf: "center",
-    marginTop: -4,
+    alignSelf:       "center",
+    marginTop:       -4,
     paddingVertical: 4,
   },
   retakeText: {
     fontFamily: "Inter_400Regular",
-    fontSize: 14,
+    fontSize:   14,
   },
-
-  // Address card 
   addressCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingVertical: 16,
+    borderRadius:      14,
+    borderWidth:       1,
+    paddingVertical:   16,
     paddingHorizontal: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor:       "#000",
+    shadowOffset:      { width: 0, height: 2 },
+    shadowOpacity:     0.05,
+    shadowRadius:      8,
+    elevation:         2,
   },
   addressRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems:    "flex-start",
   },
   addressText: {
     fontFamily: "Inter_400Regular",
-    fontSize: 14,
+    fontSize:   14,
     lineHeight: 20,
-    flex: 1,
+    flex:       1,
   },
-
-  // Save button
   saveBtn: {
     paddingVertical: 15,
-    borderRadius: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 4,
+    borderRadius:    32,
+    alignItems:      "center",
+    justifyContent:  "center",
+    marginTop:       4,
   },
   saveBtnText: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 16,
+    fontSize:   16,
   },
 });
 

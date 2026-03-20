@@ -28,9 +28,7 @@ function parseAddress(address: string): {
   const parts = address.split(",").map((p) => p.trim());
 
   if (parts.length >= 3) {
-    // parts[0] = street name
-    // parts[1] = city
-    // parts[2] = region + postal code (e.g. "Batangas 4217")
+
     // Split region and postal code apart
     const regionParts = parts[2].split(" ");
     const postalCode = regionParts[regionParts.length - 1];
@@ -100,14 +98,13 @@ const EntryCard: React.FC<EntryCardProps> = ({ entry, onRemove }) => {
     >
       <View style={styles.card}>
 
-        {/* ── Full-bleed image ── */}
+        {/* Full-bleed image  */}
         <Image
           source={{ uri: entry.imageUri }}
           style={styles.image}
           resizeMode="cover"
         />
-
-        {/* ── Gradient: transparent → dark, covers bottom 45% ── */}
+        
         <LinearGradient
           colors={
             theme.dark
@@ -145,7 +142,7 @@ const EntryCard: React.FC<EntryCardProps> = ({ entry, onRemove }) => {
           accessibilityRole="button"
         >
           <BlurView
-            intensity={theme.dark ? 30 : 100}
+            intensity={theme.dark ? 40 : 10}
             tint={theme.dark ? "dark" : "light"}
             style={styles.deleteBtnBlur}
           >

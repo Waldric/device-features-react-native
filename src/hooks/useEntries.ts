@@ -49,9 +49,9 @@ export const useEntries = (): UseEntriesReturn => {
     [],
   );
 
-  /**
-   * Delete entry by ID from storage and local state.
-   */
+
+  //Delete entry by ID from storage and local state.
+
   const handleRemoveEntry = useCallback(async (id: string): Promise<void> => {
     const success = await removeEntry(id);
     if (success) {

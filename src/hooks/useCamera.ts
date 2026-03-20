@@ -1,106 +1,151 @@
-import { useState, useCallback } from 'react';
-import { Alert } from 'react-native';
-import uuid from 'react-native-uuid';
-import { TravelEntry } from '../types';
-import {
-  requestCameraPermission,
-  launchCamera,
-} from '../services/cameraService';
+import { useState, useCallback } from "react";
+import { Alert } from "react-native";
+import uuid from "react-native-uuid";
+import { TravelEntry } from "../types";
+import { launchCamera } from "../services/cameraService";
 import {
   requestLocationPermission,
   getCurrentCoordinates,
   reverseGeocode,
-} from '../services/locationService';
-import { sendEntrySavedNotification } from '../services/notificationService';
+} from "../services/locationService";
+import { sendEntrySavedNotification } from "../services/notificationService";
 
-interface UseCameraReturn {
-  imageUri:           string | null;
-  address:            string;
+export interface UseCameraReturn {
+  imageUri: string | null;
+  address: string;
   isFetchingLocation: boolean;
-  isSaving:           boolean;
-  handleTakePhoto:    () => Promise<void>;
-  handleSave:         (onSave: (entry: TravelEntry) => Promise<boolean>) => Promise<boolean>;
-  resetForm:          () => void;
+  isSaving: boolean;
+  cameraBlocked: boolean;
+  handleTakePhoto: () => Promise<void>;
+  refetchAddress: () => Promise<void>;
+  handleSave: (
+    onSave: (entry: TravelEntry) => Promise<boolean>,
+  ) => Promise<boolean>;
+  resetForm: () => void;
 }
 
 export const useCamera = (): UseCameraReturn => {
-  const [imageUri,           setImageUri]           = useState<string | null>(null);
-  const [address,            setAddress]            = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [address, setAddress] = useState("");
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
-  const [isSaving,           setIsSaving]           = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [cameraBlocked, setCameraBlocked] = useState(false);
 
   /**
-   * Step 1 — Request camera permission and launch camera.
-   * Step 2 — On capture, auto-fetch and reverse-geocode location.
-   * Both steps guard against permission denial gracefully.
+   * Launch camera and handle all three outcomes:
+   *   success   → store URI, fetch location
+   *   cancelled → do nothing
+   *   denied    → set cameraBlocked so UI shows the inline banner
    */
   const handleTakePhoto = useCallback(async () => {
-    const cameraGranted = await requestCameraPermission();
-    if (!cameraGranted) {
-      Alert.alert(
-        'Camera Permission Denied',
-        'Please enable camera access in your device settings.',
-      );
+    const result = await launchCamera();
+
+    if (result.status === "denied") {
+      setCameraBlocked(true);
       return;
     }
 
-    const uri = await launchCamera();
-    if (!uri) return; 
+    if (result.status === "cancelled") {
+      return;
+    }
 
-    setImageUri(uri);
-    setAddress('');
+    setCameraBlocked(false);
+    setImageUri(result.uri);
+    setAddress("");
 
-    // Immediately begin location fetch after photo is captured
     setIsFetchingLocation(true);
     try {
       const locationGranted = await requestLocationPermission();
       if (!locationGranted) {
-        Alert.alert(
-          'Location Permission Denied',
-          'Please enable location access in your device settings.',
-        );
-        setAddress('Address unavailable');
+        setAddress("Address unavailable");
         return;
       }
-
-      const coords   = await getCurrentCoordinates();
+      const coords = await getCurrentCoordinates();
       const resolved = await reverseGeocode(coords);
       setAddress(resolved);
     } catch (err) {
-      console.error('[useCamera] Location fetch error:', err);
-      Alert.alert(
-        'Location Error',
-        'Could not retrieve your address. Entry can still be saved.',
-      );
-      setAddress('Address unavailable');
+      console.error("[useCamera] Location error:", err);
+      setAddress("Address unavailable");
     } finally {
       setIsFetchingLocation(false);
     }
   }, []);
 
-  /**
-   * Accepts onSave as a callback to stay decoupled from storage.
-   */
+//Re-fetch address without retaking photo
+  const refetchAddress = useCallback(async () => {
+    if (!imageUri) return;
+    setIsFetchingLocation(true);
+    setAddress("");
+    try {
+      const locationGranted = await requestLocationPermission();
+      if (!locationGranted) {
+        setAddress("Address unavailable");
+        return;
+      }
+      const coords = await getCurrentCoordinates();
+      const resolved = await reverseGeocode(coords);
+      setAddress(resolved);
+    } catch (err) {
+      console.error("[useCamera] refetchAddress error:", err);
+      setAddress("Address unavailable");
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  }, [imageUri]);
+
+  //Validate > persist > notify.
+
   const handleSave = useCallback(
-    async (onSave: (entry: TravelEntry) => Promise<boolean>): Promise<boolean> => {
+    async (
+      onSave: (entry: TravelEntry) => Promise<boolean>,
+    ): Promise<boolean> => {
       if (!imageUri) {
-        Alert.alert('No Photo', 'Please take a photo before saving.');
+        Alert.alert("No Photo", "Please take a photo before saving.");
         return false;
       }
       if (isFetchingLocation) {
-        Alert.alert('Please Wait', 'Still fetching your location.');
+        Alert.alert("Please Wait", "Still fetching your location.");
         return false;
       }
 
+      if (!address || address === "Address unavailable") {
+        return new Promise((resolve) => {
+          Alert.alert(
+            "Location Unavailable",
+            "This entry will be saved without an address. Grant location permission and use Retake Photo to add it.",
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+                onPress: () => resolve(false),
+              },
+              {
+                text: "Save Without Address",
+                style: "default",
+                onPress: async () => resolve(await performSave(onSave)),
+              },
+            ],
+          );
+        });
+      }
+
+      return performSave(onSave);
+    },
+    [imageUri, address, isFetchingLocation],
+  );
+
+  const performSave = useCallback(
+    async (
+      onSave: (entry: TravelEntry) => Promise<boolean>,
+    ): Promise<boolean> => {
       setIsSaving(true);
       try {
         const entry: TravelEntry = {
-          id:        uuid.v4() as string, // Proper UUID via react-native-uuid
-          imageUri,
-          address:   address || 'Address unavailable',
+          id: uuid.v4() as string,
+          imageUri: imageUri!,
+          address: address || "Address unavailable",
           createdAt: new Date().toISOString(),
         };
-
         const success = await onSave(entry);
         if (success) {
           await sendEntrySavedNotification();
@@ -111,17 +156,13 @@ export const useCamera = (): UseCameraReturn => {
         setIsSaving(false);
       }
     },
-    [imageUri, address, isFetchingLocation],
+    [imageUri, address],
   );
 
-  /**
-   * Clear all form state.
-   * Called after successful save and on screen blur
-   * to ensure AddEntry is always clean on re-entry.
-   */
   const resetForm = useCallback(() => {
     setImageUri(null);
-    setAddress('');
+    setAddress("");
+    setCameraBlocked(false);
   }, []);
 
   return {
@@ -129,7 +170,9 @@ export const useCamera = (): UseCameraReturn => {
     address,
     isFetchingLocation,
     isSaving,
+    cameraBlocked,
     handleTakePhoto,
+    refetchAddress,
     handleSave,
     resetForm,
   };

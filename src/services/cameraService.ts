@@ -1,23 +1,48 @@
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from "expo-image-picker";
+import { Linking, Platform } from "react-native";
+
+export type CameraResult =
+  | { status: "success"; uri: string }
+  | { status: "cancelled" }
+  | { status: "denied" };
 
 /**
- * Request camera permission from the OS.
+ * Request camera permission and launch camera.
+ * Returns a typed result so the caller can handle
+ * each case — success, cancelled, or denied.
  */
-export const requestCameraPermission = async (): Promise<boolean> => {
+export const launchCamera = async (): Promise<CameraResult> => {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
-  return status === 'granted';
-};
 
-/**
- * Launch camera and return the captured image URI.
- * Returns null if the user cancels.
- */
-export const launchCamera = async (): Promise<string | null> => {
+  if (status !== "granted") {
+    return { status: "denied" };
+  }
+
   const result = await ImagePicker.launchCameraAsync({
     allowsEditing: true,
-    quality:       1,
+    quality: 1,
   });
 
-  if (result.canceled) return null;
-  return result.assets[0].uri;
+  if (result.canceled) {
+    return { status: "cancelled" };
+  }
+
+  return { status: "success", uri: result.assets[0].uri };
+};
+
+// Check current camera permission without triggering OS dialog.
+
+export const checkCameraPermission = async (): Promise<boolean> => {
+  const { status } = await ImagePicker.getCameraPermissionsAsync();
+  return status === "granted";
+};
+
+//Open device settings for manual camera permission grant.
+
+export const openCameraSettings = (): void => {
+  if (Platform.OS === "ios") {
+    Linking.openURL("app-settings:");
+  } else {
+    Linking.openSettings();
+  }
 };
